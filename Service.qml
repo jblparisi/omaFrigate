@@ -150,6 +150,12 @@ Item {
       mediaUrl: media,
       title: String(title || key),
       geometry: Model.liveGeometry(liveModel.count, root.aspectRatio),
+      // Hyprland ignores mpv's own --geometry hint for new floating windows
+      // (every one maps centered, on top of the others). hyprland.lua has a
+      // static position rule per "omaFrigate-live-slotN" app-id instead, so
+      // each concurrently open window needs a distinct slot to actually end
+      // up side by side rather than stacked. Cycles after 4 concurrent views.
+      slot: liveModel.count % 4,
       loop: loop === true
     })
     if (!root.liveConfigReady) writeLiveConfig()
@@ -532,6 +538,7 @@ Item {
       required property string mediaUrl
       required property string title
       required property string geometry
+      required property int slot
       required property bool loop
       running: root.liveConfigReady && mediaUrl !== ""
       command: {
@@ -539,7 +546,7 @@ Item {
           "mpv",
           "--include=" + root.liveConfigPath,
           "--title=" + title,
-          "--wayland-app-id=omaFrigate-live",
+          "--wayland-app-id=omaFrigate-live-slot" + slot,
           "--force-window=immediate",
           "--geometry=" + geometry,
           "--no-audio",

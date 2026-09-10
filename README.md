@@ -58,14 +58,20 @@ Stills refresh only while the panel is open.
 
 ## Live windows
 
-Each camera opens its own `mpv` window. Multiple cameras stack. Super-drag moves them; the window close button or `q` closes one.
+Each camera opens its own `mpv` window, tagged with a Wayland app-id of
+`omaFrigate-live-slot0` through `omaFrigate-live-slot3` (cycling after 4
+concurrently open views) so up to 4 can sit side by side in a 2x2 layout
+instead of stacking on each other — Hyprland ignores mpv's own `--geometry`
+positioning hint for new floating windows, so the position has to come from a
+per-slot window rule instead. Super-drag moves a window; the window close
+button or `q` closes one.
 
 By default the stream is Frigate's MJPEG endpoint (`/api/<camera>`). In the panel gear, **Higher quality stream** switches to the camera's RTSP main stream (H264). That needs the camera's own username and password, not the Frigate login.
 
-Add this to `~/.config/hypr/hyprland.lua` (after Omarchy's defaults) so the windows float instead of tiling:
+Add this to `~/.config/hypr/hyprland.lua` (after Omarchy's defaults) so the windows float instead of tiling, with each slot in its own corner:
 
 ```lua
-o.window("^omaFrigate-live", {
+local omafrigate_live_base = {
   tag = "-default-opacity",
   float = true,
   pin = true,
@@ -73,7 +79,23 @@ o.window("^omaFrigate-live", {
   opacity = "1 1",
   size = { 640, 360 },
   keep_aspect_ratio = true,
-})
+}
+
+local omafrigate_live_slots = {
+  { "(monitor_w-window_w-40)",  "(monitor_h-window_h-40)" },
+  { "(monitor_w-window_w-40)",  "(monitor_h-window_h-416)" },
+  { "(monitor_w-window_w-696)", "(monitor_h-window_h-40)" },
+  { "(monitor_w-window_w-696)", "(monitor_h-window_h-416)" },
+}
+
+for slot, move in ipairs(omafrigate_live_slots) do
+  local rule = {}
+  for key, value in pairs(omafrigate_live_base) do
+    rule[key] = value
+  end
+  rule.move = move
+  o.window("^omaFrigate-live-slot" .. (slot - 1) .. "$", rule)
+end
 ```
 
 Hyprland reloads on save. If a window looks wrong, run `hyprctl reload` and check `hyprctl configerrors`.
