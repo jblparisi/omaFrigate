@@ -652,6 +652,15 @@ Item {
 
   onPanelOpenChanged: if (!root.panelOpen && stillsProc.running) stillsProc.running = false
 
+  // openPlayer() only calls writeLiveConfig() while liveConfigReady is still
+  // false, so the mpv config (and whatever Authorization header it carries)
+  // is otherwise written exactly once, at Component.onCompleted, before
+  // login has had any chance to run. Every live/clip view opened after that
+  // reuses that first file, so on an authenticated Frigate instance every
+  // stream request goes out with no token and gets rejected. Rewrite it
+  // whenever the token actually changes so authenticated streams work.
+  onTokenChanged: writeLiveConfig()
+
   onUrlChanged: {
     root.token = ""
     root.connected = false
