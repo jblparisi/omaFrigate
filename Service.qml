@@ -41,7 +41,7 @@ Item {
   readonly property string loginBodyPath: cacheDir + "/login.json"
   readonly property string viewedBodyPath: cacheDir + "/viewed.json"
   readonly property string liveConfigPath: cacheDir + "/mpv-live.conf"
-  readonly property var pluginSettings: Model.pluginSettings(shell ? shell.shellConfig : null, Model.PLUGIN_ID)
+  readonly property var pluginSettings: Model.pluginSettings(shell ? { bar: shell.barConfig } : null, Model.PLUGIN_ID)
   readonly property string url: pluginSettings.url
   readonly property string username: pluginSettings.username
   readonly property int refreshSeconds: pluginSettings.refreshSeconds
@@ -626,7 +626,12 @@ Item {
     interval: 5000
     running: true
     repeat: true
-    triggeredOnStart: true
+    // Not triggeredOnStart: passwordFile's async load hasn't necessarily
+    // finished by the time this component completes, so an immediate tick()
+    // can attempt login with an empty password, fail, and set
+    // loginAttempted permanently, blocking retries until the user manually
+    // saves the connection form again. Waiting for the normal interval
+    // gives the local file read plenty of time to finish first.
     onTriggered: root.tick()
   }
 
