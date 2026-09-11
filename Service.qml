@@ -140,22 +140,35 @@ Item {
     return -1
   }
 
+  // Hyprland ignores mpv's own --geometry hint for new floating windows
+  // (every one maps centered, on top of the others). hyprland.lua has a
+  // static position rule per "omaFrigate-live-slotN" app-id instead, so
+  // each concurrently open window needs a distinct slot to actually end
+  // up side by side rather than stacked. Pick the first slot not already
+  // claimed by a live window (instead of liveModel.count) so that closing
+  // one view doesn't cause the next window to reuse an in-use slot and
+  // stack on top of a still-open one. Cycles after 4 concurrent views.
+  function nextLiveSlot() {
+    var used = []
+    for (var i = 0; i < liveModel.count; i++) used.push(liveModel.get(i).slot)
+    for (var s = 0; s < 4; s++) {
+      if (used.indexOf(s) === -1) return s
+    }
+    return liveModel.count % 4
+  }
+
   function openPlayer(name, url, title, loop) {
     var key = String(name || "")
     var media = String(url || "")
     if (!key || !media) return
     if (liveIndexOf(key) !== -1) return
+    var slot = root.nextLiveSlot()
     liveModel.append({
       name: key,
       mediaUrl: media,
       title: String(title || key),
-      geometry: Model.liveGeometry(liveModel.count, root.aspectRatio),
-      // Hyprland ignores mpv's own --geometry hint for new floating windows
-      // (every one maps centered, on top of the others). hyprland.lua has a
-      // static position rule per "omaFrigate-live-slotN" app-id instead, so
-      // each concurrently open window needs a distinct slot to actually end
-      // up side by side rather than stacked. Cycles after 4 concurrent views.
-      slot: liveModel.count % 4,
+      geometry: Model.liveGeometry(slot, root.aspectRatio),
+      slot: slot,
       loop: loop === true
     })
     if (!root.liveConfigReady) writeLiveConfig()
